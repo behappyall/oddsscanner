@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using BetsLibrary;
@@ -7,7 +7,7 @@ using CefSharp;
 using HtmlAgilityPack;
 
 namespace BookmakerParser
-{/*
+{
     public class Marathonbet : BetsLibrary.BookmakerParser
     {
         private string[] MatchListUrl
@@ -20,7 +20,6 @@ namespace BookmakerParser
                           ,"https://www.marathonbet.com/en/live/45356"      // силка на баскетбол
                           , "https://www.marathonbet.com/en/live/22723"     // силка на теніс
                           , "https://www.marathonbet.com/en/live/23690"     // силка на волейбол
-                            ,"https://www.marathonbet.com/en/live/120866"   // силка на бейсбол
                     };
                 return result;
             }
@@ -28,7 +27,7 @@ namespace BookmakerParser
 
         // iceHockey не можу знайти силку в лайві його не має і не буде до 2018 ... 
         //
-        private const int MaximumMatches = 200;
+        private const int MaximumMatches = 10;
 
         private Dictionary<string, ChromiumWebBrowser> browserDict = new Dictionary<string, ChromiumWebBrowser>();
         List<string> activeMatchList = new List<string>();
@@ -42,8 +41,8 @@ namespace BookmakerParser
 
         private void LoadMatchListPages()
         {
-            matchListBrowser = new ChromiumWebBrowser[5];
-            for (int i = 0; i < 5; i++)
+            matchListBrowser = new ChromiumWebBrowser[MatchListUrl.Length];
+            for (int i = 0; i < MatchListUrl.Length; i++)
                 matchListBrowser[i] = new ChromiumWebBrowser(MatchListUrl[i]);
         }
 
@@ -53,7 +52,7 @@ namespace BookmakerParser
             {
                 LoadMatchListPages();
             }
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < MatchListUrl.Length; i++)
                 if (!matchListBrowser[i].IsBrowserInitialized || matchListBrowser[i].IsLoading) return;
 
 
@@ -154,27 +153,27 @@ namespace BookmakerParser
                 if (TotalorHand.Contains("minutes") || TotalorHand.Contains("Minutes")
                     || type.Contains("minutes") || type.Contains("Minutes")) continue;
                 Team team = GetTeam(TotalorHand, matchName);
-                string time = GetTime(TotalorHand);
+                Time time = GetTime(TotalorHand);
                 #region main bets
                 if (TotalorHand.Contains("Match Result") || TotalorHand == "Result")
                 {
                     if (type == matchName.FirstTeam + " To Win")
-                        result = new ResultBet(ResultBetType.First, "All Game", Probability, matchName, BetUrl, JavaSelectCode, sport, Maker);
+                        result = new ResultBet(ResultBetType.First, time, Probability, matchName, BetUrl, JavaSelectCode, sport, Maker);
                     else
                     if (type == "Draw")
-                        result = new ResultBet(ResultBetType.Draw, "All Game", Probability, matchName, BetUrl, JavaSelectCode, sport, Maker);
+                        result = new ResultBet(ResultBetType.Draw, time, Probability, matchName, BetUrl, JavaSelectCode, sport, Maker);
                     else
                     if (type == matchName.SecondTeam + " To Win")
-                        result = new ResultBet(ResultBetType.Second, "All Game", Probability, matchName, BetUrl, JavaSelectCode, sport, Maker);
+                        result = new ResultBet(ResultBetType.Second, time, Probability, matchName, BetUrl, JavaSelectCode, sport, Maker);
                     else
                     if (type == matchName.FirstTeam + " To Win or Draw")
-                        result = new ResultBet(ResultBetType.FirstOrDraw, "All Game", Probability, matchName, BetUrl, JavaSelectCode, sport, Maker);
+                        result = new ResultBet(ResultBetType.FirstOrDraw, time, Probability, matchName, BetUrl, JavaSelectCode, sport, Maker);
                     else
                     if (type == matchName.FirstTeam + " To Win or " + matchName.SecondTeam + " To Win")
-                        result = new ResultBet(ResultBetType.FirstOrSecond, "All Game", Probability, matchName, BetUrl, JavaSelectCode, sport, Maker);
+                        result = new ResultBet(ResultBetType.FirstOrSecond, time, Probability, matchName, BetUrl, JavaSelectCode, sport, Maker);
                     else
                     if (type == matchName.SecondTeam + " To Win or Draw")
-                        result = new ResultBet(ResultBetType.SecondOrDraw, "All Game", Probability, matchName, BetUrl, JavaSelectCode, sport, Maker);
+                        result = new ResultBet(ResultBetType.SecondOrDraw, time, Probability, matchName, BetUrl, JavaSelectCode, sport, Maker);
                 }
                 #endregion
                 else
@@ -332,40 +331,9 @@ namespace BookmakerParser
             {
                 Console.WriteLine();
                 Console.Write("{0} vs {1}   ", output.MatchName.FirstTeam, output.MatchName.SecondTeam);
-                Console.Write("Sport : {0}  ", output.Sport);
-                try
-                {
-                    var T = output as ResultBet;
-                    if (T != null)
-                    {
-                        Console.Write("{0}", ((ResultBet)output).ToString());
-                        Console.Write("coef: {0}", T.Odds);
-                    }
-                }
-                catch (Exception ex) { Console.WriteLine(ex.Message); }
-                try
-                {
-                    var T = output as TotalBet;
-                    if (T != null)
-                    {
-                        Console.Write("{0}", ((TotalBet)output).ToString());
-                        Console.Write("coef: {0}", T.Odds);
-                    }
-                }
-                catch { }
-                try
-                {
-                    var h = output as HandicapBet;
-                    if (h != null)
-                    {
-                        Console.Write("{0}", ((HandicapBet)output).ToString());
-                        Console.Write("coef: {0}", h.Odds);
-                    }
-                }
-                catch { }
-
+                Console.Write("{0} ", output);
+                Console.Write("coef: {0}", output.Odds);
             }
-
 
             System.Threading.Thread.Sleep(500);
         }
@@ -391,30 +359,34 @@ namespace BookmakerParser
             }
             catch { return null; }
         }
-        string GetTime(string TotalorHand)
+        Time GetTime(string TotalorHand)
         {
-            string time = null;
+            TimeType type=TimeType.AllGame;
+            int value=0;
             if (!TotalorHand.Contains("1st") && !TotalorHand.Contains("2nd") && !TotalorHand.Contains("3rd") && !TotalorHand.Contains("4th"))
-                time = "All Game";
+                return new Time(TimeType.AllGame);
             else
             if (TotalorHand.Contains("1st"))
-                time = "1";
+                value = 1;
             else
             if (TotalorHand.Contains("2nd"))
-                time = "2";
+                value = 2;
             else
             if (TotalorHand.Contains("3rd"))
-                time = "3";
+                value = 3;
             else
             if (TotalorHand.Contains("4th"))
-                time = "4";
+                value = 4;
             if (TotalorHand.Contains("5th"))
-                time = "5";
+                value = 5;
             if (TotalorHand.Contains("Half"))
-                time += "/2";
+                type = TimeType.Half;
             if (TotalorHand.Contains("Quarter"))
-                time += "/4";
-            return time;
+                type = TimeType.Quarter;
+            else
+            if (TotalorHand.Contains("Set"))
+                type = TimeType.Set;
+            return new Time(type, value);
         }
         Team GetTeam(string TotalorHand, MatchName name)
         {
@@ -454,6 +426,7 @@ namespace BookmakerParser
             }
         }
 
-    }*/
+    }
 
 }
+
