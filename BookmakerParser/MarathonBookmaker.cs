@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using BetsLibrary;
@@ -317,12 +317,12 @@ namespace BookmakerParser
                 if (result != null)
                 {
                     int index = BetList.IndexOf(result);
-                    if (index != -1)
+                    if (index!=-1)
                     {
                         BetList[index].ChangeOdds(result.Odds);
                     }
                     else
-                        BetList.Add(result);
+                    BetList.Add(result);
                 }
 
             }
@@ -361,8 +361,8 @@ namespace BookmakerParser
         }
         Time GetTime(string TotalorHand)
         {
-            TimeType type = TimeType.AllGame;
-            int value = 0;
+            TimeType type=TimeType.AllGame;
+            int value=0;
             if (!TotalorHand.Contains("1st") && !TotalorHand.Contains("2nd") && !TotalorHand.Contains("3rd") && !TotalorHand.Contains("4th"))
                 return new Time(TimeType.AllGame);
             else
