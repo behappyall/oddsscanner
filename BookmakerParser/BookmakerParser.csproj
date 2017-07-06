@@ -80,6 +80,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="10Bet.cs" />
     <Compile Include="LeonBets.cs" />
     <Compile Include="MarathonBookmaker.cs" />
     <Compile Include="OlimpBookmaker.cs" />

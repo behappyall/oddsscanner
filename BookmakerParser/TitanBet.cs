@@ -94,7 +94,6 @@ namespace BookmakerParser
         public void ParseMatchList(int index)
         {
             string html = matchListBrowser[index].GetSourceAsync().Result;
-            Console.WriteLine(html);
             HtmlDocument doc = new HtmlDocument();
             doc.LoadHtml(html);
 
@@ -165,8 +164,10 @@ namespace BookmakerParser
                 HtmlDocument main_doc = new HtmlDocument();
                 main_doc.LoadHtml(main_type_all);
                 HtmlNode name_of_typenode = main_doc.DocumentNode.SelectSingleNode("//span[@class='mkt-name']");
+                if (name_of_typenode == null || main_doc == null) continue;
                 string main_type = name_of_typenode.InnerText;
 
+                if (main_type == null) continue;
                 Team team = GetTeam(main_type, matchName);
 
                 Time time = GetTime(main_type);

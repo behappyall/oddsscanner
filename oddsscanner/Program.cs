@@ -27,12 +27,13 @@ namespace oddsscanner
             Marathonbet marathon = new Marathonbet();
             LeonBets leon = new LeonBets();
             TitanBet titan = new TitanBet();
+            TenBet ten = new TenBet();
+            // finder.AddBookmaker(marathon);
+            //  finder.AddBookmaker(leon);
+            //   finder.AddBookmaker(olimp);
+            finder.AddBookmaker(titan);
+            //finder.AddBookmaker(ten);
 
-            finder.AddBookmaker(marathon);
-            finder.AddBookmaker(leon);
-            finder.AddBookmaker(olimp);
-         //   finder.AddBookmaker(titan);
-            
             var result = finder.GetForks();
 
          //   Console.WriteLine("here");
@@ -41,10 +42,11 @@ namespace oddsscanner
             {
                result = finder.GetForks();
 
-               var m_matches = marathon.GetMatchList();
-               var l_matches = leon.GetMatchList();
-                var o_matches = olimp.GetMatchList();
-                var t_matches = titan.GetMatchList();
+               var marathon_matches = marathon.GetMatchList();
+               var leon_matches = leon.GetMatchList();
+                var olimp_matches = olimp.GetMatchList();
+                var titan_matches = titan.GetMatchList();
+                var ten_matches = ten.GetMatchList();
                 var forks = result.Where(e => e.Profit > 0);
                 Thread.Sleep(10000);
             }
