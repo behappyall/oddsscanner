@@ -12,7 +12,7 @@ namespace BookmakerParser
     public class LeonBets : BetsLibrary.BookmakerParser
     {
         private string MatchListUrl = "https://mobile.leonbets.net/mobile/#liveEvents";
-
+        
         private const int MaximumMatches = 10;
 
         private Dictionary<string, ChromiumWebBrowser> browserDict = new Dictionary<string, ChromiumWebBrowser>();
@@ -174,7 +174,7 @@ namespace BookmakerParser
                             {
                                 result = new ResultBet(ResultBetType.First, time, Probability, matchName, BetUrl, JavaSelectCode, sport, Maker);
                             }
-                            if (type == "x" || type == "X")
+                            if (type == "x" || type== "X")
                             {
                                 result = new ResultBet(ResultBetType.Draw, time, Probability, matchName, BetUrl, JavaSelectCode, sport, Maker);
                             }
@@ -183,7 +183,7 @@ namespace BookmakerParser
                                 result = new ResultBet(ResultBetType.Second, time, Probability, matchName, BetUrl, JavaSelectCode, sport, Maker);
                             }
                         }
-                        if (maintype == "Double Chance")
+                        if(maintype== "Double Chance")
                         {
                             if (type == "1x" || type == "1X")
                             {
@@ -221,7 +221,7 @@ namespace BookmakerParser
                         if (maintype.Contains("Handicap") && maintype.Contains("Asian"))
                         {
                             string first_or_second_team = type.Split(new string[] { " (" }, StringSplitOptions.RemoveEmptyEntries)[0];
-                            if (first_or_second_team == "1")
+                            if(first_or_second_team=="1")
                             {
                                 double param = Convert.ToDouble(type.Split(new string[] { "(", ")" }, StringSplitOptions.RemoveEmptyEntries)[1].Replace(".", ","));
 
@@ -240,11 +240,11 @@ namespace BookmakerParser
                             string first_or_second_team = type.Split(new string[] { " (" }, StringSplitOptions.RemoveEmptyEntries)[0];
                             if (first_or_second_team == "1")
                             {
-                                string initial_score = type.Split(new string[] { "(", ")" }, StringSplitOptions.RemoveEmptyEntries)[1];
+                                string initial_score= type.Split(new string[] { "(", ")" }, StringSplitOptions.RemoveEmptyEntries)[1];
                                 int first_number = Convert.ToInt32(initial_score.Split(new string[] { ":" }, StringSplitOptions.RemoveEmptyEntries)[0]);
                                 int second_number = Convert.ToInt32(initial_score.Split(new string[] { ":" }, StringSplitOptions.RemoveEmptyEntries)[1]);
                                 double param = 0;
-                                if (first_number != 0)
+                                if (first_number!=0)
                                 {
                                     param = first_number - 0.5;
                                 }
@@ -263,7 +263,7 @@ namespace BookmakerParser
                                 double param = 0;
                                 if (first_number != 0)
                                 {
-                                    param = (-1) * first_number - 0.5;
+                                    param = (-1)*first_number - 0.5;
                                 }
                                 if (second_number != 0)
                                 {
@@ -273,7 +273,7 @@ namespace BookmakerParser
                             }
                         }
                         else
-                        if (maintype == "Draw No Bet")
+                        if(maintype== "Draw No Bet")
                         {
 
                             double param = 0;
@@ -282,7 +282,7 @@ namespace BookmakerParser
                                 result = new HandicapBet(HandicapBetType.F1, param, time, Probability, matchName, BetUrl, JavaSelectCode, sport, Maker);
                             }
                             else
-                            if (type.Contains("2"))
+                            if(type.Contains("2"))
                             {
                                 result = new HandicapBet(HandicapBetType.F2, param, time, Probability, matchName, BetUrl, JavaSelectCode, sport, Maker);
                             }
@@ -308,13 +308,13 @@ namespace BookmakerParser
 
 
             }
-            foreach (var output in BetList)
-            {
-                Console.WriteLine();
-                Console.Write("{0} vs {1}   ", output.MatchName.FirstTeam, output.MatchName.SecondTeam);
-                Console.Write("{0} ", output);
-                Console.Write("coef: {0}", output.Odds);
-            }
+                foreach (var output in BetList)
+                {
+                    Console.WriteLine();
+                    Console.Write("{0} vs {1}   ", output.MatchName.FirstTeam, output.MatchName.SecondTeam);
+                    Console.Write("{0} ", output);
+                    Console.Write("coef: {0}", output.Odds);
+                }
             System.Threading.Thread.Sleep(500);
         }
 
@@ -367,7 +367,7 @@ namespace BookmakerParser
             else
             if ((team.Contains("Player 1") || team.Contains("hometeam") || team.Contains("Hometeam")) && (!team.Contains("Player 2") && !team.Contains("awayteam") && !team.Contains("Awayteam")))
                 return Team.First;
-            else
+            else 
             if ((team.Contains("Player 2") || team.Contains("awayteam") || team.Contains("Awayteam")) && (!team.Contains("Player 1") && !team.Contains("hometeam") && !team.Contains("Hometeam")))
                 return Team.Second;
             else
@@ -376,7 +376,7 @@ namespace BookmakerParser
         }
         Time GetTime(string TotalorHand)
         {
-            TimeType type = TimeType.AllGame;
+            TimeType type=TimeType.AllGame;
             int value = 0;
             if ((!TotalorHand.Contains("Sets") && !TotalorHand.Contains("sets")) && (TotalorHand.Contains("Set") || TotalorHand.Contains("set")))
             {
