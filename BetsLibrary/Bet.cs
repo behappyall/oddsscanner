@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -33,7 +33,9 @@ namespace BetsLibrary
         Second,
         FirstOrDraw,
         FirstOrSecond,
-        SecondOrDraw
+        SecondOrDraw,
+        P1,
+        P2
     }
 
     public class ResultBet : Bet
