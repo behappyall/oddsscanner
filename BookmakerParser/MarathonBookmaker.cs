@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using BetsLibrary;
@@ -62,6 +62,14 @@ namespace BookmakerParser
 
             Task.WaitAll(tasks.ToArray());
 
+            foreach (var output in BetList)
+            {
+                Console.WriteLine();
+                Console.Write("{0} vs {1}   ", output.MatchName.FirstTeam, output.MatchName.SecondTeam);
+                Console.Write("{0} ", output);
+                Console.Write("coef: {0}", output.Odds);
+            }
+
             Console.WriteLine("Marathon parsed {0} betsv at {1}", BetList.Count, DateTime.Now);
 
         }
@@ -84,27 +92,29 @@ namespace BookmakerParser
                 //   if (!browserDict.ContainsKey(id))
                 //  {
                 string url = "https://www.marathonbet.com/en/live/" + id;
-             //   Console.WriteLine(url);
+                //   Console.WriteLine(url);
                 activeMatchList.Add(url);
                 // System.Threading.Thread.Sleep(5000);
                 //    }
                 if (activeMatchList.Count == MaximumMatches) break;
             }
 
+
         }
 
         private void ParseMatch(string url)
         {
             HtmlWeb web = new HtmlWeb();
-            var proxy = ProxyList.GetRandomProxy();
+            //var proxy = ProxyList.GetRandomProxy();
             //  Console.WriteLine(DateTime.Now +"s");
             HtmlDocument doc;
 
             try
             {
                 doc = web.Load(url/*, proxy.ip, proxy.port, proxy.login, proxy.password*/);
-            } catch { return; }
-           // Console.WriteLine(DateTime.Now + "e");
+            }
+            catch { return; }
+            // Console.WriteLine(DateTime.Now + "e");
             Sport sport = GetSport(doc);
             if (sport == Sport.NotSupported) return;
 
@@ -137,8 +147,22 @@ namespace BookmakerParser
                 Team team = GetTeam(TotalorHand, matchName);
                 Time time = GetTime(TotalorHand);
                 #region main bets
-                if (TotalorHand.Contains("Match Result") || TotalorHand == "Result")
+                if (TotalorHand.Contains("Match Result") || TotalorHand == "Result" || TotalorHand.Contains("Match Winner Including All OT") || (TotalorHand.Contains("Result") && TotalorHand.Contains("Set")) || TotalorHand.Contains("Normal Time Result"))
                 {
+                    if(TotalorHand.Contains("Match Winner Including All OT"))
+                    {
+                        if (type == matchName.FirstTeam)
+                        {
+                            if (node.Attributes["data-market-type"] != null && node.Attributes["data-market-type"].Value == "RESULT_2WAY")
+                                result = new ResultBet(ResultBetType.P1, time, Probability, matchName, BetUrl, JavaSelectCode, sport, Maker);
+                        }
+                        else
+                        if (type == matchName.SecondTeam)
+                        {
+                            if (node.Attributes["data-market-type"] != null && node.Attributes["data-market-type"].Value == "RESULT_2WAY")
+                                result = new ResultBet(ResultBetType.P2, time, Probability, matchName, BetUrl, JavaSelectCode, sport, Maker);
+                        }
+                    }
                     if (type == matchName.FirstTeam + " To Win")
                     {
                         if (node.Attributes["data-market-type"] != null && node.Attributes["data-market-type"].Value == "RESULT_2WAY")
@@ -318,14 +342,7 @@ namespace BookmakerParser
                 }
 
             }
-            /*
-            foreach (var output in BetList)
-            {
-                Console.WriteLine();
-                Console.Write("{0} vs {1}   ", output.MatchName.FirstTeam, output.MatchName.SecondTeam);
-                Console.Write("{0} ", output);
-                Console.Write("coef: {0}", output.Odds);
-            }*/
+            
 
             System.Threading.Thread.Sleep(500);
         }
