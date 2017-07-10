@@ -79,16 +79,16 @@ namespace BookmakerParser
             HtmlWeb web = new HtmlWeb();
             HtmlDocument doc = web.Load(MatchListUrl[index]);
 
-            HtmlNodeCollection matchNodes = doc.DocumentNode.SelectNodes("//div[@class='expand-event-btn']");
+            HtmlNodeCollection matchNodes = doc.DocumentNode.SelectNodes("//tbody[@class and @data-event-treeid and @data-expanded-event-treeid and @data-live='true']");
 
             if (matchNodes == null) return;
             foreach (var node in matchNodes)
             {
-
+                MatchName matchname = GetMatchName(node); 
                 string id = String.Empty;
 
-                id = node.Attributes["data-expand-event-btn"].Value;
-
+                id = node.Attributes["data-event-treeid"].Value;
+                MatchName Name = GetMatchName(node);
                 //   if (!browserDict.ContainsKey(id))
                 //  {
                 string url = "https://www.marathonbet.com/en/live/" + id;
@@ -118,9 +118,16 @@ namespace BookmakerParser
             Sport sport = GetSport(doc);
             if (sport == Sport.NotSupported) return;
 
-            MatchName matchName = GetMatchName(doc);
-            if (matchName == null) return;
+            MatchName matchName = new MatchName("first","second");// взяти з ParsematchList
 
+            if (sport == Sport.Tennis)
+            {
+                //
+                ;
+            }
+
+            matchName = GetFullMatchName(doc); // повне ім'я (only for tennis cuz all event names were  writed like (Coppejans K.)  )
+            if (matchName == null) return;
             string BetUrl = url;
 
             HtmlNodeCollection betsNodes = doc.DocumentNode.SelectNodes("//td");
@@ -147,9 +154,23 @@ namespace BookmakerParser
                 Team team = GetTeam(TotalorHand, matchName);
                 Time time = GetTime(TotalorHand);
                 #region main bets
-                if (TotalorHand.Contains("Match Result") || TotalorHand == "Result" || TotalorHand.Contains("Match Winner Including All OT") || (TotalorHand.Contains("Result") && TotalorHand.Contains("Set")) || TotalorHand.Contains("Normal Time Result"))
+                if (TotalorHand.Contains("Match Result") || TotalorHand == "Result" || TotalorHand.Contains("Match Winner Including All OT") || (TotalorHand.Contains("Result") && TotalorHand.Contains("Set")) || TotalorHand.Contains("Normal Time Result") || TotalorHand.Contains("To Win Match"))
                 {
                     if(TotalorHand.Contains("Match Winner Including All OT"))
+                    {
+                        if (type == matchName.FirstTeam)
+                        {
+                            if (node.Attributes["data-market-type"] != null && node.Attributes["data-market-type"].Value == "RESULT_2WAY")
+                                result = new ResultBet(ResultBetType.P1, time, Probability, matchName, BetUrl, JavaSelectCode, sport, Maker);
+                        }
+                        else
+                        if (type == matchName.SecondTeam)
+                        {
+                            if (node.Attributes["data-market-type"] != null && node.Attributes["data-market-type"].Value == "RESULT_2WAY")
+                                result = new ResultBet(ResultBetType.P2, time, Probability, matchName, BetUrl, JavaSelectCode, sport, Maker);
+                        }
+                    }
+                    if (TotalorHand.Contains("To Win Match"))
                     {
                         if (type == matchName.FirstTeam)
                         {
@@ -346,16 +367,46 @@ namespace BookmakerParser
 
             System.Threading.Thread.Sleep(500);
         }
-        MatchName GetMatchName(HtmlDocument doc)
+        MatchName GetMatchName(HtmlNode node)
         {
             try
             {
                 string matchName = string.Empty;
 
-                foreach (var node in doc.DocumentNode.SelectNodes("//tbody"))
-                    if (node.Attributes["data-event-name"] != null) { matchName = node.Attributes["data-event-name"].Value; break; }
+                matchName = node.Attributes["data-event-name"].Value;
+                var matchNameSplit = matchName.Split(new string[] { " vs ", " @ "," - " }, StringSplitOptions.RemoveEmptyEntries);
+                if (matchNameSplit[0].Contains("("))
+                {
+                    matchNameSplit[0] = matchNameSplit[0].Split(new string[] { " (" }, StringSplitOptions.RemoveEmptyEntries)[0];
+                }
+                if (matchNameSplit[1].Contains("("))
+                {
+                    matchNameSplit[1] = matchNameSplit[1].Split(new string[] { " (" }, StringSplitOptions.RemoveEmptyEntries)[0];
+                }
+                return new MatchName(matchNameSplit[0], matchNameSplit[1]);
+            }
+            catch { return null; }
+        }
+         MatchName GetFullMatchName(HtmlDocument doc)
+        {
+            try
+            {
+                string matchName = string.Empty;
 
-                var matchNameSplit = matchName.Split(new string[] { " vs ", " @ " }, StringSplitOptions.RemoveEmptyEntries);
+                HtmlNodeCollection Team = doc.DocumentNode.SelectNodes("//div[@class='live-today-member-name nowrap ']");
+                HtmlDocument FirstDoc = new HtmlDocument();
+                HtmlDocument SecondDoc = new HtmlDocument();
+
+                FirstDoc.LoadHtml(Team.First().InnerHtml);
+
+                SecondDoc.LoadHtml(Team.Last().InnerHtml);
+
+                string firstTeam = FirstDoc.DocumentNode.SelectNodes("//span").First().InnerText;
+                string secondTeam = SecondDoc.DocumentNode.SelectNodes("//span").First().InnerText;
+
+                matchName = firstTeam + " vs " + secondTeam;
+
+                var matchNameSplit = matchName.Split(new string[] { " vs ", " @ "," - " }, StringSplitOptions.RemoveEmptyEntries);
                 if (matchNameSplit[0].Contains("("))
                 {
                     matchNameSplit[0] = matchNameSplit[0].Split(new string[] { " (" }, StringSplitOptions.RemoveEmptyEntries)[0];
