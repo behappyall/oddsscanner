@@ -57,8 +57,7 @@ namespace BookmakerParser
                 ParseMatchList(index);
                 index++;
             }
-
-            DeleteNotActiveMatch();
+            
         }
 
   
@@ -92,12 +91,7 @@ namespace BookmakerParser
                         MatchName Name = GetMatchName(node2);
 
                         string url = "https://mobile.leonbets.net/mobile/#eventDetails/:" + id;
-                        if (!browserDict.ContainsKey(Name))
-                        {
-                            Console.WriteLine(url);
-                            browserDict.Add(Name, new ChromiumWebBrowser(url));
-                            System.Threading.Thread.Sleep(50);
-                        }
+                        
 
                         MatchDict.Add(Name, url);
                         if (MatchDict.Count == MaximumMatches) break;
@@ -128,7 +122,6 @@ namespace BookmakerParser
             if (matchName == null) return;
             Sport sport = GetSport(doc);
             if (sport == Sport.NotSupported) return;
-            
             string BetUrl = url;
             
             Bet result = null;
@@ -152,7 +145,8 @@ namespace BookmakerParser
                     HtmlNodeCollection betsNodes = document.DocumentNode.SelectNodes("//a[@id]");
 
                     Team team = GetTeam(maintype);
-                    Time time = GetTime(maintype);// зробити час
+                    Time time = GetTime(maintype);
+
                     foreach (var node2 in betsNodes)
                     {
                         string value = node2.InnerHtml;
@@ -210,12 +204,15 @@ namespace BookmakerParser
                                 result = new ResultBet(ResultBetType.SecondOrDraw, time, Probability, matchName, BetUrl, JavaSelectCode, sport, Maker);
                             }
                         }
-                        // we have totals for just all game and including ALL OT . What do we need? and the same for handicap. idk ask it at godLikeCoder.
-                        // also we have totals for whole game(All game). 
                         // importantly!!!!
                         // You have to see it.
                         if ((maintype.Contains("Total") || maintype.Contains("total")) && (!maintype.Contains("aggregated") && !maintype.Contains("Totals")))
                         {
+                               if (sport == Sport.Basketball && time.Type == TimeType.AllGame && time.Value == 0 && 
+                                (!maintype.Contains("including overtime") && !maintype.Contains("Including overtime") && !maintype.Contains("including Overtime")))
+                                continue;
+                            // перевірити правильність написання including overtime(регістр)
+
                             if (type.Contains("Under"))
                             {
                                 try
@@ -236,6 +233,11 @@ namespace BookmakerParser
                         }
                         if (maintype.Contains("Handicap") && maintype.Contains("Asian"))
                         {
+                            if (sport == Sport.Basketball && time.Type == TimeType.AllGame && time.Value == 0 &&
+                             (!maintype.Contains("inc. OT") && !maintype.Contains("Inc. OT") && !maintype.Contains("INC. OT")))
+                                continue;
+
+                            // перевірити правильність написання including overtime(регістр)
                             string first_or_second_team = type.Split(new string[] { " (" }, StringSplitOptions.RemoveEmptyEntries)[0];
                             if (first_or_second_team == "1")
                             {
@@ -253,6 +255,8 @@ namespace BookmakerParser
                         else
                         if (maintype.Contains("Handicap") && !maintype.Contains("Asian"))
                         {
+                            // коли буде матч переглянути як тут пишуть INC.OT. 
+
                             string first_or_second_team = type.Split(new string[] { " (" }, StringSplitOptions.RemoveEmptyEntries)[0];
                             if (first_or_second_team == "1")
                             {
@@ -349,12 +353,23 @@ namespace BookmakerParser
             var tasks = new List<Task>();
             int taskCount = 0;
 
+            foreach(var match in matches)
+            {
+                if (!browserDict.ContainsKey(match))
+                {
+                    if (MatchDict.TryGetValue(match, out string result) == true)
+                        browserDict.Add(match, new ChromiumWebBrowser(result));
+                    System.Threading.Thread.Sleep(50);
+                }
+            }
+            DeleteNotActiveMatch();
             foreach (var match in matches)
             {
+               
                 if (!MatchDict.ContainsKey(match) || !browserDict.ContainsKey(match)) continue;
 
                 tasks.Add(Task.Factory.StartNew(() => ParseMatch(browserDict[match])));
-                //Task.WaitAll(tasks[tasks.Count - 1]); without async. just for sorting all action and output data.
+                Task.WaitAll(tasks[tasks.Count - 1]); //without async. just for sorting all action and output data.
                 taskCount++;
                 if (taskCount > 10) { Task.WaitAll(tasks.ToArray()); taskCount = 0; }
             }
