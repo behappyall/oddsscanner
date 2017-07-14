@@ -1,6 +1,6 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
+using System.Collections.Generic;
 using BetsLibrary;
 using CefSharp.OffScreen;
 using CefSharp;
@@ -29,8 +29,6 @@ namespace BookmakerParser
         //
         private const int MaximumMatches = 100;
 
-        List<string> activeMatchList = new List<string>();
-        //  private ChromiumWebBrowser[] matchListBrowser;
         private const Bookmaker Maker = Bookmaker.Marathonbet;
         string JavaSelectCode = "Java";
         public Marathonbet()
@@ -41,21 +39,87 @@ namespace BookmakerParser
         public override void Parse()
         {
             int index = 0;
-            activeMatchList = new List<string>();
-            while (activeMatchList.Count < MaximumMatches && index < MatchListUrl.Length)
+            MatchDict = new Dictionary<MatchName, string>();
+            while (MatchDict.Count < MaximumMatches && index < MatchListUrl.Length)
             {
                 ParseMatchList(index);
                 index++;
-
             }
+        }
+
+        public void ParseMatchList(int index)
+        {
+            HtmlWeb web = new HtmlWeb();
+            HtmlDocument doc = web.Load(MatchListUrl[index]);
+
+            HtmlNodeCollection matchNodes = doc.DocumentNode.SelectNodes("//tbody[@class and @data-event-treeid and @data-expanded-event-treeid and @data-live='true']");
+
+            if (matchNodes == null) return;
+            foreach (var node in matchNodes)
+            {
+                string id = String.Empty;
+
+                id = node.Attributes["data-event-treeid"].Value;
+                MatchName Name = GetMatchName(node);
+
+                string url = "https://www.marathonbet.com/en/live/" + id;
+               
+                MatchDict.Add(Name, url);
+                if (MatchDict.Count == MaximumMatches) break;
+            }
+
+
+        }
+
+        private void ParseMatch(string url)
+        {
+            HtmlWeb web = new HtmlWeb();
+            //  var proxy = ProxyList.GetRandomProxy();
+            //  Console.WriteLine(DateTime.Now +"s");
+            HtmlDocument doc;
+
+            try
+            {
+                doc = web.Load(url/*, proxy.ip, proxy.port, proxy.login, proxy.password*/);
+            }
+            catch { return; }
+
+            ParseMatchPageHtml(doc, url);
+        }
+
+        MatchName GetMatchName(HtmlNode node)
+        {
+            try
+            {
+                string matchName = string.Empty;
+
+                matchName = node.Attributes["data-event-name"].Value;
+                var matchNameSplit = matchName.Split(new string[] { " vs ", " @ ", " - " }, StringSplitOptions.RemoveEmptyEntries);
+                if (matchNameSplit[0].Contains("("))
+                {
+                    matchNameSplit[0] = matchNameSplit[0].Split(new string[] { " (" }, StringSplitOptions.RemoveEmptyEntries)[0];
+                }
+                if (matchNameSplit[1].Contains("("))
+                {
+                    matchNameSplit[1] = matchNameSplit[1].Split(new string[] { " (" }, StringSplitOptions.RemoveEmptyEntries)[0];
+                }
+                return new MatchName(matchNameSplit[0], matchNameSplit[1]);
+            }
+            catch { return null; }
+        }
+
+        public override void ParseBets(List<MatchName> matches)
+        {
+
             BetList = new List<Bet>();
 
             var tasks = new List<Task>();
             int taskCount = 0;
 
-            foreach (var match in activeMatchList)
+            foreach (var match in matches)
             {
-                tasks.Add(Task.Factory.StartNew(() => ParseMatch(match)));
+                if (!MatchDict.ContainsKey(match)) continue;
+                tasks.Add(Task.Factory.StartNew(() => ParseMatch(MatchDict[match])));
                 taskCount++;
                 if (taskCount > 10) { Task.WaitAll(tasks.ToArray()); taskCount = 0; }
             }
@@ -71,62 +135,21 @@ namespace BookmakerParser
             }
 
             Console.WriteLine("Marathon parsed {0} betsv at {1}", BetList.Count, DateTime.Now);
-
         }
 
-        public void ParseMatchList(int index)
+        public override void ParseMatchPageHtml(string html, string url)
         {
-            HtmlWeb web = new HtmlWeb();
-            HtmlDocument doc = web.Load(MatchListUrl[index]);
-
-            HtmlNodeCollection matchNodes = doc.DocumentNode.SelectNodes("//tbody[@class and @data-event-treeid and @data-expanded-event-treeid and @data-live='true']");
-
-            if (matchNodes == null) return;
-            foreach (var node in matchNodes)
-            {
-                MatchName matchname = GetMatchName(node); 
-                string id = String.Empty;
-
-                id = node.Attributes["data-event-treeid"].Value;
-                MatchName Name = GetMatchName(node);
-                //   if (!browserDict.ContainsKey(id))
-                //  {
-                string url = "https://www.marathonbet.com/en/live/" + id;
-                //   Console.WriteLine(url);
-                activeMatchList.Add(url);
-                // System.Threading.Thread.Sleep(5000);
-                //    }
-                if (activeMatchList.Count == MaximumMatches) break;
-            }
-
-
+            HtmlDocument doc = new HtmlDocument();
+            doc.LoadHtml(html);
+            ParseMatchPageHtml(doc, url);
         }
 
-        private void ParseMatch(string url)
+        public override void ParseMatchPageHtml(HtmlDocument doc, string url)
         {
-            HtmlWeb web = new HtmlWeb();
-            //var proxy = ProxyList.GetRandomProxy();
-            //  Console.WriteLine(DateTime.Now +"s");
-            HtmlDocument doc;
-
-            try
-            {
-                doc = web.Load(url/*, proxy.ip, proxy.port, proxy.login, proxy.password*/);
-            }
-            catch { return; }
-            // Console.WriteLine(DateTime.Now + "e");
             Sport sport = GetSport(doc);
             if (sport == Sport.NotSupported) return;
 
-            MatchName matchName = new MatchName("first","second");// взяти з ParsematchList
-
-            if (sport == Sport.Tennis)
-            {
-                //
-                ;
-            }
-
-            matchName = GetFullMatchName(doc); // повне ім'я (only for tennis cuz all event names were  writed like (Coppejans K.)  )
+            MatchName matchName = GetFullMatchName(doc); // повне ім'я (only for tennis cuz all event names were  writed like (Coppejans K.)  )
             if (matchName == null) return;
             string BetUrl = url;
 
@@ -156,7 +179,7 @@ namespace BookmakerParser
                 #region main bets
                 if (TotalorHand.Contains("Match Result") || TotalorHand == "Result" || TotalorHand.Contains("Match Winner Including All OT") || (TotalorHand.Contains("Result") && TotalorHand.Contains("Set")) || TotalorHand.Contains("Normal Time Result") || TotalorHand.Contains("To Win Match"))
                 {
-                    if(TotalorHand.Contains("Match Winner Including All OT"))
+                    if (TotalorHand.Contains("Match Winner Including All OT"))
                     {
                         if (type == matchName.FirstTeam)
                         {
@@ -363,31 +386,12 @@ namespace BookmakerParser
                 }
 
             }
-            
 
-            System.Threading.Thread.Sleep(500);
+            System.Threading.Thread.Sleep(50);
         }
-        MatchName GetMatchName(HtmlNode node)
-        {
-            try
-            {
-                string matchName = string.Empty;
 
-                matchName = node.Attributes["data-event-name"].Value;
-                var matchNameSplit = matchName.Split(new string[] { " vs ", " @ "," - " }, StringSplitOptions.RemoveEmptyEntries);
-                if (matchNameSplit[0].Contains("("))
-                {
-                    matchNameSplit[0] = matchNameSplit[0].Split(new string[] { " (" }, StringSplitOptions.RemoveEmptyEntries)[0];
-                }
-                if (matchNameSplit[1].Contains("("))
-                {
-                    matchNameSplit[1] = matchNameSplit[1].Split(new string[] { " (" }, StringSplitOptions.RemoveEmptyEntries)[0];
-                }
-                return new MatchName(matchNameSplit[0], matchNameSplit[1]);
-            }
-            catch { return null; }
-        }
-         MatchName GetFullMatchName(HtmlDocument doc)
+
+        MatchName GetFullMatchName(HtmlDocument doc)
         {
             try
             {
@@ -406,7 +410,7 @@ namespace BookmakerParser
 
                 matchName = firstTeam + " vs " + secondTeam;
 
-                var matchNameSplit = matchName.Split(new string[] { " vs ", " @ "," - " }, StringSplitOptions.RemoveEmptyEntries);
+                var matchNameSplit = matchName.Split(new string[] { " vs ", " @ ", " - " }, StringSplitOptions.RemoveEmptyEntries);
                 if (matchNameSplit[0].Contains("("))
                 {
                     matchNameSplit[0] = matchNameSplit[0].Split(new string[] { " (" }, StringSplitOptions.RemoveEmptyEntries)[0];
